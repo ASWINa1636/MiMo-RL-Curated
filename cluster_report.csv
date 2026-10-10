@@ -1,0 +1,21 @@
+cluster,size,top_words,top_language,main_type,pct_hard
+0,123,"user, auth, token, request, api, key, password, credentials",Python,bug,39
+1,79,"string, error, return, func, key, context, ctx, client",Go,feature,47
+2,129,"cluster, pod, kubernetes, namespace, resource, version, service, kind",Go,bug,44
+3,184,"file, command, path, config, directory, run, files, exit",Python,feature,48
+4,154,"path, file, source, type, metadata, existing, config, value",Python,bug,44
+5,145,"line, string, text, prettier, output, value, content, lines",Python,bug,20
+6,152,"python, py, file, import, line, self, mypy, class",Python,bug,22
+7,62,"implementation, outcomes, notes, task, statement, expected, table, behavior",Python,other,23
+8,65,"version, git, release, commit, repository, project, package, github",Go,bug,18
+9,192,"return, model, int, str, value, function, want, python",Python,feature,37
+10,144,"com, issue, version, assistant, https, home, error, github",Python,bug,24
+11,108,"https, css, icon, com, page, component, html, div",JavaScript,bug,19
+12,142,"byte, string, bytes, value, key, return, json, existing",Go,bug,31
+13,123,"client, error, connection, response, retry, request, timeout, server",Python,bug,33
+14,132,"js, function, const, test, react, jest, string, foo",JavaScript,bug,28
+15,156,"np, pd, pandas, dtype, python, import, array, numpy",Python,bug,25
+16,119,"table, sql, column, select, sqlglot, sqlfluff, schema, columns",Python,bug,23
+17,150,"url, request, http, response, json, string, api, content",Python,bug,37
+18,177,"state, job, event, time, task, run, window, transaction",Python,bug,39
+19,162,"query, list, return, filter, metrics, page, api, graph",Python,feature,46
