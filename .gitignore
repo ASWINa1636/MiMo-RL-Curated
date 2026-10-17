@@ -10,3 +10,4 @@ hf_release/
 *.csv
 !labels_all.csv
 !labels_all_corrected_plus_candidates.csv
+data.zip
