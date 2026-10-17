@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score, classification_report
 
 df = pd.read_parquet("data/code_final_v2.parquet")
 emb = np.load("embeddings.npy")
-labels = pd.read_csv("labels.csv")
+labels = pd.read_csv("labels_all.csv")
 
 pos = {iid: i for i, iid in enumerate(df["instance_id"])}
 idx = labels["instance_id"].map(pos).values
