@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiMo-RL Curated Dashboard</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --card: #ffffff; --text: #1b2230; --muted: #647084; --line: #e2e7ef;
+    --accent: #3866f2; --accent-soft: #e8eefe;
+    --bug: #d93f45; --feature: #23925f; --easy: #23925f; --medium: #d99a06; --hard: #d93f45;
+    --shadow: 0 1px 2px rgba(20,30,50,.06), 0 4px 14px rgba(20,30,50,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1218; --card: #161b24; --text: #e7ebf2; --muted: #93a0b5; --line: #262e3c;
+      --accent: #7499ff; --accent-soft: #1b2744;
+      --bug: #ff6b70; --feature: #46c48a; --easy: #46c48a; --medium: #f0b429; --hard: #ff6b70;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 20px 60px; }
+  header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 20px; }
+  h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  .sub { color: var(--muted); margin-top: 2px; }
+  .status { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .dot.ok { background: var(--feature); } .dot.bad { background: var(--bug); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .stat .num { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+  .stat .lbl { color: var(--muted); font-size: 13px; }
+  .stat .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .card h3 { margin: 0 0 2px; font-size: 15px; }
+  .card .note { color: var(--muted); font-size: 12.5px; margin-bottom: 10px; }
+  .bar-row { display: grid; grid-template-columns: 150px 1fr 56px; align-items: center; gap: 8px;
+             padding: 3px 6px; border-radius: 8px; font-size: 13.5px; }
+  .bar-row[data-key] { cursor: pointer; }
+  .bar-row[data-key]:hover { background: var(--accent-soft); }
+  .bar-row.active { background: var(--accent-soft); outline: 1.5px solid var(--accent); }
+  .bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; background: var(--accent); }
+  .bar-row .cnt { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 440px; overflow-y: auto; }
+
+  h2 { font-size: 19px; margin: 8px 0 10px; letter-spacing: -.01em; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  input[type=search], select, textarea {
+    background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 10px; font: inherit; }
+  input[type=search] { min-width: 240px; flex: 1 1 240px; }
+  textarea { width: 100%; min-height: 96px; resize: vertical; }
+  label.check { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text);
+           padding: 8px 14px; border-radius: 10px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; min-height: 4px; }
+  .chip { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+
+  .table-wrap { overflow-x: auto; padding: 0; }
+  table { width: 100%; border-collapse: collapse; min-width: 860px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--accent-soft); }
+  td.id { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  td.snip { max-width: 520px; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; border: 1px solid currentColor; }
+  .pill.bug { color: var(--bug); } .pill.feature { color: var(--feature); }
+  .pill.easy { color: var(--easy); } .pill.medium { color: var(--medium); } .pill.hard { color: var(--hard); }
+  .conf { color: var(--muted); font-size: 12.5px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+  .conf.low { color: var(--medium); }
+  .pager { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px 0; color: var(--muted); font-size: 14px; }
+  .pager .btns { display: flex; gap: 8px; }
+  .msg { padding: 18px; color: var(--muted); }
+  .msg.err { color: var(--bug); }
+
+  .sim-box { margin-top: 28px; }
+  .sim-actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .sim-list { margin-top: 12px; display: grid; gap: 8px; }
+  .sim-item { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; background: var(--card); }
+  .sim-item:hover { border-color: var(--accent); }
+  .sim-item .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; margin-bottom: 4px; }
+  .sim-item .score { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .sim-item .txt { font-size: 14px; color: var(--text); }
+
+  .limits { margin-top: 32px; font-size: 13px; color: var(--muted); }
+  .limits ul { margin: 6px 0 0; padding-left: 20px; }
+
+  .backdrop { position: fixed; inset: 0; background: rgba(8,12,20,.55); display: none;
+              align-items: flex-start; justify-content: center; padding: 4vh 14px; overflow-y: auto; z-index: 20; }
+  .backdrop.open { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--line); border-radius: 16px; width: min(860px, 100%);
+           padding: 20px 22px; box-shadow: var(--shadow); }
+  .modal-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .modal h3 { margin: 0; font-size: 17px; word-break: break-all; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 12px 0; font-size: 13.5px; color: var(--muted); }
+  .meta b { color: var(--text); font-weight: 600; }
+  pre.prompt { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+               white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow: auto;
+               font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 0; }
+  .modal h4 { margin: 18px 0 8px; font-size: 14px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 520px) { .bar-row { grid-template-columns: 110px 1fr 48px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>MiMo-RL Curated</h1>
+      <div class="sub" id="subtitle">Explorer for coding tasks from XiaomiMiMo/MiMo-V2.6-RL-oss (code subset)</div>
+    </div>
+    <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">connecting to the API…</span></div>
+  </header>
+
+  <section class="cards" id="statCards"></section>
+  <section class="grid" id="charts"></section>
+
+  <h2 id="tasks">Tasks</h2>
+  <div class="filters">
+    <input type="search" id="q" placeholder="Search the issue text…" aria-label="Search the issue text">
+    <select id="fDifficulty" aria-label="Difficulty"><option value="">Any difficulty</option></select>
+    <select id="fType" aria-label="Issue type"><option value="">Any issue type</option></select>
+    <select id="fLanguage" aria-label="Programming language"><option value="">Any language</option></select>
+    <select id="fCluster" aria-label="Cluster"><option value="">Any cluster</option></select>
+    <select id="fChinese" aria-label="Prompt language">
+      <option value="">Any prompt language</option>
+      <option value="true">Chinese prompts only</option>
+      <option value="false">Without Chinese</option>
+    </select>
+    <select id="fSort" aria-label="Sort">
+      <option value="instance_id:asc">Sort: task ID</option>
+      <option value="difficulty_score:desc">Hardest first</option>
+      <option value="difficulty_score:asc">Easiest first</option>
+      <option value="prompt_words:desc">Longest prompt</option>
+      <option value="issue_type_confidence:desc">Most confident type</option>
+      <option value="issue_type_confidence:asc">Least confident type</option>
+    </select>
+    <label class="check"><input type="checkbox" id="fConfident"> Confident type only</label>
+    <button id="clearBtn">Clear filters</button>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div class="card table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Task</th><th>Language</th><th>Difficulty</th><th>Issue type</th><th>Cluster</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="tableMsg" class="msg" hidden></div>
+  </div>
+  <div class="pager">
+    <div id="pageInfo"></div>
+    <div class="btns"><button id="prevBtn">&larr; Previous</button><button id="nextBtn">Next &rarr;</button></div>
+  </div>
+
+  <section class="sim-box card">
+    <h3>Find similar tasks</h3>
+    <div class="note">Paste a new issue. The API embeds it and returns the closest tasks in the dataset. The first request is slow because the model loads.</div>
+    <textarea id="simText" placeholder="Example: Login fails with an OAuth token error after the token expires"></textarea>
+    <div class="sim-actions">
+      <button class="primary" id="simBtn">Find similar</button>
+      <span id="simStatus" class="note"></span>
+    </div>
+    <div class="sim-list" id="simList"></div>
+  </section>
+
+  <section class="limits card">
+    <b>How to read these labels</b>
+    <ul>
+      <li><b>Difficulty</b> is an estimate from test-patch size, files touched and prompt length. It is not measured model performance.</li>
+      <li><b>Issue type</b> (bug or feature) is predicted by a classifier trained mostly on AI-made labels. "Confident" means probability of at least 0.70. Predictions are less reliable for Chinese-language prompts.</li>
+      <li><b>Clusters</b> group tasks with similar text. The names are short descriptions, not official categories.</li>
+      <li><b>Language</b> is the programming language of the test files.</li>
+    </ul>
+  </section>
+
+  <footer>Data: XiaomiMiMo/MiMo-V2.6-RL-oss (Apache-2.0), code subset. Enrichment columns added by this project.</footer>
+</div>
+
+<div class="backdrop" id="backdrop" role="dialog" aria-modal="true" aria-label="Task details">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+"use strict";
+// Served by the API at "/" -> same origin. Opened as a file -> talk to the local API directly.
+const API = location.protocol === "file:" ? "http://127.0.0.1:8000" : "";
+
+const state = { difficulty: "", issue_type: "", language: "", cluster: "", chinese: "",
+                confident: false, q: "", sort_by: "instance_id", desc: false, limit: 20, offset: 0 };
+let stats = null, total = 0, requestId = 0;
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+
+function h(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, "");
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) {
+    if (kid == null || kid === false) continue;
+    e.append(typeof kid === "object" ? kid : String(kid));
+  }
+  return e;
+}
+
+async function api(path, opts) {
+  const r = await fetch(API + path, opts);
+  if (!r.ok) {
+    let msg = r.status + " " + r.statusText;
+    try { const j = await r.json(); if (j.detail) msg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail); } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+const typePill = (t) => h("span", { class: "pill " + t }, t);
+const diffPill = (d) => h("span", { class: "pill " + d }, d);
+
+/* ---------- overview: cards + charts ---------- */
+function statCard(num, label, hint) {
+  return h("div", { class: "card stat" }, h("div", { class: "num" }, num), h("div", { class: "lbl" }, label), hint ? h("div", { class: "hint" }, hint) : null);
+}
+
+function barCard(title, note, data, opts = {}) {
+  const entries = opts.keepOrder ? Object.entries(data) : Object.entries(data).sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...entries.map((e) => e[1]));
+  const rows = entries.map(([name, count]) => {
+    const props = { class: "bar-row", title: name + ": " + fmt(count) };
+    if (opts.filterKey) { props["data-key"] = opts.filterKey; props["data-val"] = name; props.tabindex = "0"; props.role = "button"; }
+    const row = h("div", props,
+      h("div", { class: "name" }, name),
+      h("div", { class: "bar-track" }, h("div", { class: "bar-fill", style: `width:${(count / max) * 100}%;` + (opts.color ? `background:var(--${opts.color(name)});` : "") })),
+      h("div", { class: "cnt" }, fmt(count)));
+    if (opts.filterKey) {
+      const go = () => toggleFilter(opts.filterKey, name);
+      row.addEventListener("click", go);
+      row.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); go(); } });
+    }
+    return row;
+  });
+  return h("div", { class: "card" }, h("h3", {}, title), h("div", { class: "note" }, note),
+           h("div", { class: entries.length > 12 ? "scroll" : "" }, rows));
+}
+
+function renderOverview(s) {
+  $("statCards").replaceChildren(
+    statCard(fmt(s.total), "tasks"),
+    statCard(fmt(s.issue_type_confident ?? 0), "confident issue types", s.total ? Math.round(((s.issue_type_confident ?? 0) / s.total) * 100) + "% of tasks" : ""),
+    statCard(fmt(s.chinese_prompts), "Chinese-language prompts"),
+    statCard(fmt(s.near_duplicates), "near-duplicate flags", "similarity above 0.90"),
+    statCard(fmt(Math.round(s.median_prompt_words)), "median prompt words"));
+
+  $("charts").replaceChildren(
+    barCard("Difficulty", "Estimated, in three equal groups. Click a bar to filter.", s.difficulty, { filterKey: "difficulty", color: (n) => n }),
+    barCard("Issue type", "Predicted bug or feature. Click to filter.", s.issue_type, { filterKey: "issue_type", color: (n) => n }),
+    barCard("Programming language", "Language of the test files. Click to filter.", s.prog_language, { filterKey: "language" }),
+    barCard("Topic clusters", "20 groups of similar tasks. Click to filter.", s.cluster_name, { filterKey: "cluster" }),
+    barCard("Prompt length", "Words per prompt.", s.prompt_words_hist, { keepOrder: true }),
+    barCard("Issue-type confidence", "How sure the classifier is.", s.issue_type_confidence_hist || {}, { keepOrder: true }));
+  refreshActive();
+}
+
+function fillSelect(id, values) {
+  const sel = $(id);
+  while (sel.options.length > 1) sel.remove(1);
+  values.forEach((v) => sel.append(new Option(v, v)));
+}
+
+/* ---------- filters ---------- */
+function refreshActive() {
+  document.querySelectorAll(".bar-row[data-key]").forEach((r) =>
+    r.classList.toggle("active", state[r.dataset.key] === r.dataset.val));
+}
+
+function syncControls() {
+  $("fDifficulty").value = state.difficulty; $("fType").value = state.issue_type;
+  $("fLanguage").value = state.language; $("fCluster").value = state.cluster;
+  $("fChinese").value = state.chinese; $("fConfident").checked = state.confident;
+  $("fSort").value = state.sort_by + ":" + (state.desc ? "desc" : "asc");
+  $("q").value = state.q;
+}
+
+function renderChips() {
+  const labels = { difficulty: "difficulty", issue_type: "type", language: "language", cluster: "cluster" };
+  const chips = [];
+  for (const k of Object.keys(labels)) if (state[k]) chips.push(h("span", { class: "chip" }, labels[k] + ": " + state[k]));
+  if (state.chinese) chips.push(h("span", { class: "chip" }, state.chinese === "true" ? "Chinese only" : "without Chinese"));
+  if (state.confident) chips.push(h("span", { class: "chip" }, "confident type only"));
+  if (state.q) chips.push(h("span", { class: "chip" }, "text: " + state.q));
+  $("chips").replaceChildren(...chips);
+}
+
+function changed() { state.offset = 0; syncControls(); refreshActive(); renderChips(); loadTasks(); }
+
+function toggleFilter(key, value) {
+  state[key] = state[key] === value ? "" : value;
+  changed();
+  if (state[key]) $("tasks").scrollIntoView();
+}
+
+function clearAll() {
+  Object.assign(state, { difficulty: "", issue_type: "", language: "", cluster: "", chinese: "", confident: false, q: "", sort_by: "instance_id", desc: false });
+  changed();
+}
+
+/* ---------- tasks table ---------- */
+function queryString() {
+  const p = new URLSearchParams();
+  if (state.difficulty) p.set("difficulty", state.difficulty);
+  if (state.issue_type) p.set("issue_type", state.issue_type);
+  if (state.language) p.set("language", state.language);
+  if (state.cluster) p.set("cluster", state.cluster);
+  if (state.chinese) p.set("chinese", state.chinese);
+  if (state.confident) p.set("confident", "true");
+  if (state.q) p.set("q", state.q);
+  p.set("sort_by", state.sort_by); p.set("desc", state.desc ? "true" : "false");
+  p.set("limit", state.limit); p.set("offset", state.offset);
+  return p.toString();
+}
+
+function confBadge(item) {
+  if (item.issue_type_confidence == null) return null;
+  const low = item.issue_type_confident === false;
+  return h("span", { class: "conf" + (low ? " low" : ""), title: low ? "low confidence: treat this label as a guess" : "confident prediction" },
+           item.issue_type_confidence.toFixed(2) + (low ? " low" : ""));
+}
+
+async function loadTasks() {
+  const my = ++requestId;
+  $("tableMsg").hidden = false; $("tableMsg").className = "msg"; $("tableMsg").textContent = "Loading…";
+  try {
+    const res = await api("/tasks?" + queryString());
+    if (my !== requestId) return;                 // a newer request replaced this one
+    total = res.total;
+    $("rows").replaceChildren(...res.items.map((it) =>
+      h("tr", { tabindex: "0", onclick: () => openDetail(it.instance_id), onkeydown: (ev) => { if (ev.key === "Enter") openDetail(it.instance_id); } },
+        h("td", { class: "id", title: it.instance_id }, "#" + it.instance_id.split("-").pop()),
+        h("td", { class: "snip" }, it.snippet),
+        h("td", {}, it.prog_language),
+        h("td", {}, diffPill(it.difficulty)),
+        h("td", {}, typePill(it.issue_type), confBadge(it)),
+        h("td", {}, it.cluster_name))));
+    if (res.items.length === 0) { $("tableMsg").textContent = "No tasks match these filters."; }
+    else $("tableMsg").hidden = true;
+    const from = total ? res.offset + 1 : 0, to = res.offset + res.items.length;
+    $("pageInfo").textContent = `${fmt(from)}–${fmt(to)} of ${fmt(total)} tasks`;
+    $("prevBtn").disabled = state.offset === 0;
+    $("nextBtn").disabled = state.offset + state.limit >= total;
+  } catch (err) {
+    if (my !== requestId) return;
+    $("rows").replaceChildren();
+    $("tableMsg").className = "msg err"; $("tableMsg").textContent = "Could not load tasks: " + err.message;
+  }
+}
+
+/* ---------- detail modal ---------- */
+function closeModal() { $("backdrop").classList.remove("open"); }
+
+function simItem(r) {
+  return h("div", { class: "sim-item", tabindex: "0", onclick: () => openDetail(r.instance_id), onkeydown: (ev) => { if (ev.key === "Enter") openDetail(r.instance_id); } },
+    h("div", { class: "top" }, h("b", {}, "#" + r.instance_id.split("-").pop()), typePill(r.issue_type), diffPill(r.difficulty),
+      h("span", {}, r.prog_language), h("span", {}, r.cluster_name), h("span", { class: "score" }, "similarity " + r.similarity.toFixed(2))),
+    h("div", { class: "txt" }, r.snippet));
+}
+
+async function openDetail(id) {
+  const modal = $("modal");
+  modal.replaceChildren(h("div", { class: "msg" }, "Loading…"));
+  $("backdrop").classList.add("open");
+  try {
+    const [t, sim] = await Promise.all([api("/tasks/" + encodeURIComponent(id)), api("/similar/" + encodeURIComponent(id) + "?k=5")]);
+    let files = [];
+    try { files = JSON.parse(t.test_files || "[]"); } catch (e) {}
+    const meta = [
+      ["language", t.prog_language], ["difficulty", `${t.difficulty} (score ${Number(t.difficulty_score).toFixed(2)})`],
+      ["cluster", t.cluster_name], ["words", fmt(t.prompt_words)], ["Chinese text", t.has_chinese ? "yes" : "no"],
+      ["test files", fmt(t.n_test_files ?? files.length)],
+    ];
+    if (t.near_duplicate) meta.push(["near-duplicate of", `${t.nearest_instance_id} (${Number(t.nearest_similarity).toFixed(2)})`]);
+    modal.replaceChildren(
+      h("div", { class: "modal-head" },
+        h("div", {}, h("h3", {}, t.instance_id),
+          h("div", { style: "margin-top:6px" }, typePill(t.issue_type), confBadge({ issue_type_confidence: t.issue_type_confidence, issue_type_confident: t.issue_type_confident }))),
+        h("button", { onclick: closeModal, "aria-label": "Close" }, "Close")),
+      h("div", { class: "meta" }, meta.map(([k, v]) => h("span", {}, k + ": ", h("b", {}, v)))),
+      h("pre", { class: "prompt" }, t.prompt),
+      files.length ? h("div", { class: "meta" }, h("span", {}, "test files: ", h("b", {}, files.slice(0, 6).join(", ") + (files.length > 6 ? ` … (+${files.length - 6})` : "")))) : null,
+      h("h4", {}, "Most similar tasks"),
+      h("div", { class: "sim-list" }, sim.results.map(simItem)));
+    modal.scrollTop = 0;
+  } catch (err) {
+    modal.replaceChildren(h("div", { class: "msg err" }, "Could not load this task: " + err.message), h("button", { onclick: closeModal }, "Close"));
+  }
+}
+
+/* ---------- similar by pasted text ---------- */
+async function findSimilar() {
+  const text = $("simText").value.trim();
+  if (!text) { $("simStatus").textContent = "Paste some issue text first."; return; }
+  $("simBtn").disabled = true; $("simStatus").textContent = "Searching… (the first call loads the model)";
+  $("simList").replaceChildren();
+  try {
+    const res = await api("/similar-text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, k: 6 }) });
+    $("simList").replaceChildren(...res.results.map(simItem));
+    $("simStatus").textContent = res.results.length + " closest tasks";
+  } catch (err) {
+    $("simStatus").textContent = "Error: " + err.message;
+  } finally { $("simBtn").disabled = false; }
+}
+
+/* ---------- wiring ---------- */
+function wire() {
+  const bind = (id, key, conv = (v) => v) => $(id).addEventListener("change", (e) => { state[key] = conv(e.target.value); changed(); });
+  bind("fDifficulty", "difficulty"); bind("fType", "issue_type"); bind("fLanguage", "language");
+  bind("fCluster", "cluster"); bind("fChinese", "chinese");
+  $("fConfident").addEventListener("change", (e) => { state.confident = e.target.checked; changed(); });
+  $("fSort").addEventListener("change", (e) => { const [k, d] = e.target.value.split(":"); state.sort_by = k; state.desc = d === "desc"; changed(); });
+  let timer; $("q").addEventListener("input", (e) => { clearTimeout(timer); timer = setTimeout(() => { state.q = e.target.value.trim(); changed(); }, 300); });
+  $("clearBtn").addEventListener("click", clearAll);
+  $("prevBtn").addEventListener("click", () => { state.offset = Math.max(0, state.offset - state.limit); loadTasks(); $("tasks").scrollIntoView(); });
+  $("nextBtn").addEventListener("click", () => { state.offset += state.limit; loadTasks(); $("tasks").scrollIntoView(); });
+  $("simBtn").addEventListener("click", findSimilar);
+  $("backdrop").addEventListener("click", (e) => { if (e.target === $("backdrop")) closeModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+}
+
+async function init() {
+  wire();
+  try {
+    const [health, s] = await Promise.all([api("/health"), api("/stats")]);
+    stats = s;
+    $("statusDot").className = "dot ok";
+    $("statusText").textContent = `API connected · ${health.data_file.replace(/^\.[\\/]/, "")} · ${health.embedding_model || "no embedding model"}`;
+    $("subtitle").textContent = `Explorer for ${fmt(s.total)} coding tasks from XiaomiMiMo/MiMo-V2.6-RL-oss (code subset)`;
+    fillSelect("fDifficulty", ["easy", "medium", "hard"]);
+    fillSelect("fType", Object.keys(s.issue_type).sort());
+    fillSelect("fLanguage", Object.keys(s.prog_language));
+    fillSelect("fCluster", Object.keys(s.cluster_name).sort());
+    renderOverview(s);
+    loadTasks();
+  } catch (err) {
+    $("statusDot").className = "dot bad";
+    $("statusText").textContent = "Cannot reach the API: " + err.message;
+    $("tableMsg").hidden = false; $("tableMsg").className = "msg err";
+    $("tableMsg").textContent = "Start the server with: uvicorn main:app --reload   then open http://127.0.0.1:8000";
+  }
+}
+init();
+</script>
+</body>
+</html>

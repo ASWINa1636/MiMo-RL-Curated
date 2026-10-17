@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+*.bak
+*.parquet
+*.npy
+data/
+lite/
+hf_release/
+*.csv
+!labels_all.csv
+!labels_all_corrected_plus_candidates.csv
