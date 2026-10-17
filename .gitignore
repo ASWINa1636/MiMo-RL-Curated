@@ -1,13 +1,32 @@
+
+# Python environment and cache
 venv/
+.venv/
 __pycache__/
-*.pyc
+*.py[cod]
 *.bak
+
+# Dataset and generated artifacts
 *.parquet
 *.npy
 data/
-lite/
-hf_release/
+data.zip
+
+# Generated reports and CSVs
 *.csv
 !labels_all.csv
 !labels_all_corrected_plus_candidates.csv
-data.zip
+
+# Generated release folders
+lite/
+hf_release/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
