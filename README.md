@@ -46,6 +46,229 @@ The original tasks are nested records with no filters or summaries. This project
 
 The lite split takes 25 tasks from each of the 20 clusters. It is balanced on purpose and is **not a random sample**: its class mix and confidence levels differ a little from the full set.
 
+<<<<<<< HEAD
+=======
+## Processing pipeline
+
+The project is organized as a reproducible sequence of scripts. The
+exact input and output filenames may depend on which pipeline version
+you have generated locally.
+
+-  **Download** --- retrieve the source `code` subset.
+-  **Flatten and profile** --- extract the issue prompt and nested task metadata, and calculate useful descriptive fields.
+-  **Estimate complexity** --- create a relative difficulty score and  split tasks into `easy`, `medium`, and `hard`.
+-  **Create embeddings** --- encode task text as numeric vectors for  semantic comparison.
+-  **Cluster and inspect similarity** --- group tasks into 20 clusters,and identify nearest-neighbour similarity signals.
+-  **Name clusters** --- review cluster samples and assign readable  topic names.
+-  **Predict issue type** --- train a bug-versus-feature classifier  from labelled examples and add confidence metadata.
+-  **Build the API and dashboard** --- expose statistics, filters, task details, and similar-task search.
+-  **Create the release** --- validate the full and lite tables, then
+    export the files and dataset card for Hugging Face.
+
+### Main scripts
+
+| Script | Purpose |
+|---|---|
+| `testing_and_download.py` | Downloads or prepares the original code subset |
+| `flatten.py` | Flattens nested records and adds basic profiling fields |
+| `difficulty.py` | Calculates the heuristic difficulty score |
+| `embed.py` / `embed_v2.py` | Generates text embeddings and similarity features; use the version appropriate to your local pipeline |
+| `export_release.py` | Validates and assembles the Hugging Face release folder |
+| `main.py` | FastAPI backend for the dataset and similarity features |
+| `dashboard.html` | Single-file HTML/CSS/JavaScript dashboard |
+| `label_helper.py` | Interactive helper used while preparing issue-type labels |
+
+## Enriched fields
+
+The release contains 25 public columns. The exact schema is defined by
+the Parquet files and the dataset card on Hugging Face. Important fields
+include:
+
+-   `instance_id` --- identifier for a task.
+-   `prompt` --- issue/task text.
+-   `test_patch` --- test patch supplied with the task.
+-   `test_files` and `n_test_files` --- files inferred from the test
+    patch and their count.
+-   `prog_language` --- programming language inferred from test-file
+    extensions; it may not always equal the main repository language.
+-   `prompt_chars` and `prompt_words` --- prompt character and word
+    counts.
+-   `has_code_block` --- whether the prompt contains a fenced code
+    block.
+-   `has_chinese` --- whether Chinese characters were detected in the
+    prompt.
+-   `patch_added`, `patch_removed`, and `patch_lines` --- changed-line
+    counts extracted from the test patch where available.
+-   `difficulty_score` and `difficulty` --- heuristic complexity score
+    and relative bucket.
+-   `cluster_id` and `cluster_name` --- semantic cluster identifier and
+    human-readable topic name.
+-   `nearest_instance_id` and `nearest_sim` --- nearest task identifier
+    and similarity score.
+-   `near_duplicate` --- flag for tasks whose nearest-neighbour
+    similarity exceeds the chosen threshold.
+-   `issue_type` --- model-predicted `bug` or `feature`.
+-   `issue_type_confidence`, `issue_type_confident`, and
+    `issue_type_tier` --- confidence value and derived confidence
+    indicators.
+
+Use the Hugging Face dataset card and the actual Parquet schema as the
+source of truth for the complete field list.
+
+## How the derived labels work
+
+### Estimated difficulty
+
+Difficulty is a **relative heuristic**, not a verified measure of how
+hard a task is for a person or model. The score combines percentile
+ranks for:
+
+-   Test-patch changed-line count: **40%**
+-   Number of test files: **30%**
+-   Prompt word count: **30%**
+
+Tasks are then divided into approximately equal `easy`, `medium`, and
+`hard` groups. In the current run, the groups contain 905, 897, and 896
+tasks respectively. "Hard" therefore means relatively more complex
+according to these signals within this dataset; it does not mean that a
+model has failed the task.
+
+### Semantic clusters and similarity
+
+Task text is converted into embeddings, then KMeans groups the vectors
+into 20 clusters. Cluster names are human-readable interpretations of
+samples from each group, not official labels. Similarity scores help
+surface related tasks, but high similarity does not prove that two tasks
+are duplicates. Review candidate pairs before removing data.
+
+### Bug-versus-feature prediction
+
+The classifier predicts **bug vs. feature** for tasks that appear to fit
+those two categories. The model was trained using 350 labelled examples
+and evaluated with cross-validation on 228 tasks whose original labels
+were bug or feature.
+
+Reported results from the current experiment:
+
+| Evaluation | Result |
+|---|---:|
+| Bug-versus-feature accuracy | 87.4% |
+| Accuracy when confidence is at least 0.70 | 93.9% |
+| Coverage at confidence ≥ 0.70 | 81.1% |
+| Accuracy when confidence is at least 0.80 | 97.1% |
+| Coverage at confidence ≥ 0.80 | 71.2% |
+| Tasks marked confident at confidence ≥ 0.70 | 2,274 / 2,698 |
+
+**Important evaluation caveats:**
+
+-   The evaluation set is small (228 tasks), so the estimates have
+    meaningful uncertainty.
+-   The reference labels were largely AI-generated and have **not yet
+    been independently validated by a blind human test**.
+-   These metrics measure agreement with the available reference labels,
+    not guaranteed agreement with expert judgement or real-world task
+    outcomes.
+-   The binary classifier does not provide a separate `other` class.
+    Tasks that are neither a bug nor a feature may still be forced into
+    one of the two classes.
+-   Chinese-language prompts are less reliable with the current
+    English-focused embedding and labelling setup. Their average
+    prediction confidence was lower in the observed run (0.73 versus
+    0.88 for other prompts).
+-   Results may be optimistic because multiple model variants were
+    explored during development.
+
+Treat issue types as predictions, not ground truth. Do not use them as
+the sole basis for high-impact decisions.
+
+## Architecture
+
+```mermaid
+%% Generated by https://gitdiagram.com/aswina1636/mimo-rl-curated
+flowchart TD
+
+subgraph group_processing["Dataset processing"]
+  node_download["Download subset"]
+  node_flatten["Flatten and profile<br/>[flatten.py]"]
+  node_difficulty["Difficulty scoring<br/>[difficulty.py]"]
+  node_finalize["Finalize metadata<br/>[finalize.py]"]
+end
+
+subgraph group_enrichment["Semantic enrichment"]
+  node_embedding["Task embeddings<br/>[embed.py]"]
+  node_embedding_v2["Alternate embeddings<br/>[embed_v2.py]"]
+  node_cluster_report["Cluster review<br/>[cluster_report.py]"]
+  node_cluster_names["Name clusters<br/>[rename_clusters.py]"]
+end
+
+subgraph group_release["Labels and releases"]
+  node_label_helper["Manual issue labels<br/>[label_helper.py]"]
+  node_classifier["Issue classifier"]
+  node_release_builder["Validate and assemble<br/>[export_release.py]"]
+  node_lite_split["Balanced lite split<br/>[make_lite.py]"]
+end
+
+subgraph group_exploration["API and exploration"]
+  node_api["Dataset API<br/>[main.py]"]
+  node_dashboard["Interactive dashboard<br/>[dashboard.html]"]
+end
+
+node_dataset_source[("Source code subset")]
+node_curated_data[("Curated task data")]
+node_embedding_data[("Embedding vectors")]
+node_explorer(("Dataset explorer"))
+node_embedding_model["Text embedding model"]
+node_release_dataset[("Hugging Face release")]
+
+node_dataset_source -->|"downloads"| node_download
+node_download -->|"prepares input"| node_flatten
+node_flatten -->|"profiles first"| node_difficulty
+node_difficulty -->|"scores before embedding"| node_embedding
+node_embedding -->|"inspects clusters"| node_cluster_report
+node_embedding -->|"names clusters"| node_cluster_names
+node_embedding_v2 -->|"encodes with"| node_embedding_model
+node_embedding -->|"adds cluster metadata"| node_finalize
+node_label_helper -->|"prepares labels"| node_classifier
+node_classifier -->|"adds predictions"| node_release_builder
+node_finalize -->|"assembles release"| node_release_builder
+node_release_builder -->|"exports files"| node_release_dataset
+node_curated_data -->|"samples balanced subset"| node_lite_split
+node_curated_data -->|"loads task table"| node_api
+node_embedding_data -->|"loads vectors"| node_api
+node_api -->|"serves dashboard"| node_dashboard
+node_explorer -->|"explores tasks"| node_dashboard
+node_dashboard -->|"requests data"| node_api
+node_api -->|"embeds new text"| node_embedding_model
+
+click node_download "https://github.com/aswina1636/mimo-rl-curated/blob/main/testing_and_download.py"
+click node_flatten "https://github.com/aswina1636/mimo-rl-curated/blob/main/flatten.py"
+click node_difficulty "https://github.com/aswina1636/mimo-rl-curated/blob/main/difficulty.py"
+click node_embedding "https://github.com/aswina1636/mimo-rl-curated/blob/main/embed.py"
+click node_embedding_v2 "https://github.com/aswina1636/mimo-rl-curated/blob/main/embed_v2.py"
+click node_cluster_report "https://github.com/aswina1636/mimo-rl-curated/blob/main/cluster_report.py"
+click node_cluster_names "https://github.com/aswina1636/mimo-rl-curated/blob/main/rename_clusters.py"
+click node_finalize "https://github.com/aswina1636/mimo-rl-curated/blob/main/finalize.py"
+click node_label_helper "https://github.com/aswina1636/mimo-rl-curated/blob/main/label_helper.py"
+click node_classifier "https://github.com/aswina1636/mimo-rl-curated/blob/main/train_classifier3.py"
+click node_release_builder "https://github.com/aswina1636/mimo-rl-curated/blob/main/export_release.py"
+click node_lite_split "https://github.com/aswina1636/mimo-rl-curated/blob/main/make_lite.py"
+click node_api "https://github.com/aswina1636/mimo-rl-curated/blob/main/main.py"
+click node_dashboard "https://github.com/aswina1636/mimo-rl-curated/blob/main/dashboard.html"
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_download,node_flatten,node_difficulty,node_finalize toneBlue
+class node_embedding,node_embedding_v2,node_cluster_report,node_cluster_names,node_dataset_source,node_curated_data,node_embedding_data,node_release_dataset toneAmber
+class node_label_helper,node_classifier,node_release_builder,node_lite_split toneMint
+class node_api,node_dashboard toneRose
+class node_explorer,node_embedding_model toneIndigo
+```
+>>>>>>> 73723b2c1695341776cb782e71fe02c98644b8e7
 ## Dashboard
 
 `dashboard.html` is a single file using plain HTML, CSS and JavaScript. It talks to the FastAPI backend, so there is no React build step and no Node.js requirement.
