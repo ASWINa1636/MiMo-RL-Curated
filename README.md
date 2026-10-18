@@ -8,14 +8,11 @@
 The original tasks are nested records with no filters or summaries. This project flattens them into plain columns, adds profiling and estimated difficulty, groups the tasks into topic clusters, flags near-duplicates, predicts whether each task describes a bug or a feature (with a confidence score), and ships a FastAPI backend and a plain HTML/CSS/JavaScript dashboard to explore the result.
 
 > **Scope:** only the 2,698-task `code` subset is processed. The other subsets of the original dataset (`webdev`, `music`, `cyber`, `general`) are not included.
-
 > This is an independent project. It is **not affiliated with or endorsed by Xiaomi MiMo.**
 
 ## Links
 - Original dataset: [XiaomiMiMo/MiMo-V2.6-RL-oss](https://huggingface.co/datasets/XiaomiMiMo/MiMo-V2.6-RL-oss)
-
 - Curated dataset (this project): [Aswina1636/mimo-rl-curated-code](https://huggingface.co/datasets/Aswina1636/mimo-rl-curated-code)
-
 - Source code: [ASWINa1636/MiMo-RL-Curated](https://github.com/ASWINa1636/MiMo-RL-Curated)
 
 ## Contents
@@ -91,7 +88,6 @@ include:
 -   `prompt` --- issue/task text.
 -   `test_patch` --- test patch supplied with the task.
 -   `test_files` and `n_test_files` --- files inferred from the test patch and their count.
-
 -   `prog_language` --- programming language inferred from test-file
     extensions; it may not always equal the main repository language.
 -   `prompt_chars` and `prompt_words` --- prompt character and word
@@ -125,9 +121,7 @@ hard a task is for a person or model. The score combines percentile
 ranks for:
 
 -   Test-patch changed-line count: **40%**
-
 -   Number of test files: **30%**
-
 -   Prompt word count: **30%**
 
 Tasks are then divided into approximately equal `easy`, `medium`, and `hard` groups. In the current run, the groups contain 905, 897, and 896 tasks respectively. "Hard" therefore means relatively more complex according to these signals within this dataset; it does not mean that a model has failed the task.
@@ -137,7 +131,6 @@ Task text is converted into embeddings, then KMeans groups the vectors into 20 c
 
 ### Bug-versus-feature prediction
 The classifier predicts **bug vs. feature** for tasks that appear to fit those two categories. The model was trained using 350 labelled examples and evaluated with cross-validation on 228 tasks whose original labels were bug or feature.
-
 Reported results from the current experiment:
 
 | Evaluation | Result |
@@ -317,19 +310,13 @@ class node_explorer,node_embedding_model toneIndigo
 
 ## Dashboard
 `dashboard.html` is a single file using plain HTML, CSS and JavaScript. It talks to the FastAPI backend, so there is no React build step and no Node.js requirement.
-
 It has:
 
 - Summary cards: task count, confident issue types, Chinese-language prompts, near-duplicate flags, median prompt length.
-
 - Six charts: difficulty, issue type, programming language, topic clusters, prompt length, classifier confidence. Click a bar to filter the task table.
-
 - A filter bar: text search, difficulty, issue type, language, cluster, Chinese text, "confident type only", sorting.
-
 - A paged task table. Click a row to read the full prompt and see the five most similar tasks.
-
 - A box where you paste a new issue and get the closest tasks in the dataset.
-
 - Light and dark mode, following your system setting.
 
 ![Dashboard overview](ss/ss1.png)
@@ -462,7 +449,6 @@ If PowerShell blocks activation, use `.\venv\Scripts\activate.bat` from Command 
 Open:
 
 - Dashboard: <http://127.0.0.1:8000/>
-
 - API test page: <http://127.0.0.1:8000/docs>
 
 | Endpoint | What it does |
@@ -495,34 +481,22 @@ Data files (`*.parquet`, `*.npy`) are not stored here. They live on Hugging Face
 
 ## Limitations
 - Only the `code` subset is processed.
-
 - Difficulty, cluster names, duplicate flags and issue-type predictions are derived signals and can be wrong.
-
 - Issue-type accuracy has not been checked against independent human labels. See [Accuracy](#accuracy-of-the-issue-type-prediction).
-
 - Roughly 9% of tasks are neither a bug nor a feature, but the classifier only outputs those two.
-
 - **Do not split this data randomly into train and evaluation sets.** Tasks from the same project can be close neighbours (8 pairs score above 0.80 similarity) and can share context. Repository names are not stored in the dataset, so a split by repository needs them to be recovered from the task text first. The lite split is balanced by cluster and is not meant as a train/eval split.
-
 - Predictions are less reliable for Chinese-language prompts.
-
 - `prog_language` is the language of the tests, not necessarily of the project.
-
 - Languages are unbalanced. Python, Go and JavaScript make up most tasks, and several languages have fewer than 10.
-
 - The lite split is balanced by cluster, so it has more Chinese-language prompts (5.6% versus 3.4%) and a lower share of confident labels than the full set.
-
 - The Docker images and verifiers of the original environments are not included. To run the tasks, use the original dataset.
-
 - Task texts describe third-party open-source projects and come from the original dataset unchanged. They may contain public contact details that appear in the original issue text.
-
 - The API and dashboard need the data and embedding files, which are not in this repository.
 
 This project does not run the software-engineering tasks and does not show how easy a task is for an AI model.
 
 ## Changelog
 - **v1.1**: `test_files`, `n_test_files`, `patch_lines`, `prog_language` and `difficulty` now ignore three helper files that the original environments add to test patches: `mimo_test_command.sh` (every task), `mimo_build_env.tar.gz.b64` (about 31%) and `test_commands.json` (about 22%). Before, every task counted at least one extra test file, 63 tasks were labeled `Shell` only because of the helper script, and about 21% of tasks sat in a different difficulty group. The lite split was rebuilt.
-
 - **v1.0**: first release.
 
 ## Data and attribution
@@ -532,13 +506,9 @@ This project is derived from the `code` subset of [XiaomiMiMo/MiMo-V2.6-RL-oss](
 Issues and pull requests are welcome. Useful contributions:
 
 - A blind, human-labeled test set for the issue-type classifier.
-
 - Reviewing cluster names and near-duplicate candidates.
-
 - Better handling of Chinese and other non-English prompts.
-
 - More validation and reproducibility checks.
-
 - Extending the pipeline to the other subsets of the original dataset.
 
 ## Acknowledgements
