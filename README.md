@@ -63,9 +63,7 @@ The project is organized as a reproducible sequence of scripts. The exact input 
 -  **Name clusters** --- review cluster samples and assign readable  topic names.
 -  **Predict issue type** --- train a bug-versus-feature classifier  from labelled examples and add confidence metadata.
 -  **Build the API and dashboard** --- expose statistics, filters, task details, and similar-task search.
--  **Create the release** --- validate the full and lite tables, then
-
-    export the files and dataset card for Hugging Face.
+-  **Create the release** --- validate the full and lite tables, then export the files and dataset card for Hugging Face.
 
 ### Main scripts
 | Script | Purpose |
@@ -150,8 +148,7 @@ Reported results from the current experiment:
 -   The binary classifier does not provide a separate `other` class. Tasks that are neither a bug nor a feature may still be forced into one of the two classes.
 -   Chinese-language prompts are less reliable with the current English-focused embedding and labelling setup. Their average prediction confidence was lower in the observed run (0.73 versus 0.88 for other prompts).
 -   Results may be optimistic because multiple model variants were explored during development.
-
-Treat issue types as predictions, not ground truth. Do not use them as the sole basis for high-impact decisions.
+-   Treat issue types as predictions, not ground truth. Do not use them as the sole basis for high-impact decisions.
 
 ## Architecture
 ```mermaid
@@ -492,8 +489,7 @@ Data files (`*.parquet`, `*.npy`) are not stored here. They live on Hugging Face
 - The Docker images and verifiers of the original environments are not included. To run the tasks, use the original dataset.
 - Task texts describe third-party open-source projects and come from the original dataset unchanged. They may contain public contact details that appear in the original issue text.
 - The API and dashboard need the data and embedding files, which are not in this repository.
-
-This project does not run the software-engineering tasks and does not show how easy a task is for an AI model.
+- This project does not run the software-engineering tasks and does not show how easy a task is for an AI model.
 
 ## Changelog
 - **v1.1**: `test_files`, `n_test_files`, `patch_lines`, `prog_language` and `difficulty` now ignore three helper files that the original environments add to test patches: `mimo_test_command.sh` (every task), `mimo_build_env.tar.gz.b64` (about 31%) and `test_commands.json` (about 22%). Before, every task counted at least one extra test file, 63 tasks were labeled `Shell` only because of the helper script, and about 21% of tasks sat in a different difficulty group. The lite split was rebuilt.
