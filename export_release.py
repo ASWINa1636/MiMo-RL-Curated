@@ -10,8 +10,9 @@ import numpy as np
 import pandas as pd
 
 # ---------------- CONFIG: edit here ----------------
+HF_USER = "Aswina1636"                            # your Hugging Face username
 HF_NAME = "mimo-rl-curated-code"                  # repository name on Hugging Face
-REPO_URL = "<your-github-repo-url>"               # put your GitHub project link here
+REPO_URL = "https://github.com/ASWINa1636/MiMo-RL-Curated"   # your GitHub project link
 V4 = "code_final_v4.parquet"
 LITE = "lite/code_lite_500.parquet"
 EMB = "embeddings_all-mpnet-base-v2.npy"
@@ -29,10 +30,10 @@ COLS = {   # public column -> description (order = column order in the files)
     "test_patch": "Diff of the test files that verify the task. Unchanged from the original.",
     "docker_image": "Image name given in the original dataset. The images themselves are NOT included here.",
     "verifier_timeout_sec": "Verifier timeout from the original dataset (1800 for every task).",
-    "prog_language": "Programming language, guessed from the file extensions in test_patch (rule-based).",
-    "test_files": "List of test files touched by test_patch.",
-    "n_test_files": "Number of test files in test_patch.",
-    "patch_lines": "Added plus removed lines in test_patch.",
+    "prog_language": "Programming language, guessed from the real test files in test_patch (rule-based; Other = no known extension).",
+    "test_files": "List of real test files touched by test_patch (harness files excluded, see Changelog).",
+    "n_test_files": "Number of real test files in test_patch (harness files excluded).",
+    "patch_lines": "Added plus removed lines in test_patch, harness files excluded.",
     "prompt_words": "Words in the prompt.",
     "prompt_chars": "Characters in the prompt.",
     "has_code_block": "Prompt contains a markdown code fence.",
@@ -152,7 +153,7 @@ the empty `reward_model.ground_truth`, and the duplicate `problem_statement` (id
 ```python
 from datasets import load_dataset
 
-lite = load_dataset("<your-username>/@@NAME@@", "lite", split="train")
+lite = load_dataset("@@USER@@/@@NAME@@", "lite", split="train")
 easy_english = lite.filter(lambda r: r["difficulty"] == "easy" and not r["has_chinese"])
 sure_bugs = lite.filter(lambda r: r["issue_type"] == "bug" and r["issue_type_confident"])
 ```
@@ -167,9 +168,9 @@ sure_bugs = lite.filter(lambda r: r["issue_type"] == "bug" and r["issue_type_con
 
 ## How the columns were made
 
-- **prog_language**: first file extension in `test_patch` that matches a known language. It is the language of the *tests*;
+- **prog_language**: first real test file in `test_patch` whose extension matches a known language. It is the language of the *tests*;
   a project in one language can have shell-script tests (`Shell` is {} tasks).
-- **difficulty**: an *estimate*, not measured model performance. Score = 40% test-patch size + 30% number of test files +
+- **difficulty**: an *estimate*, not measured model performance. Score = 40% test-patch size + 30% number of real test files +
   30% prompt length, each turned into a percentile rank, then cut into three equal groups. "Hard" means "larger than most
   other tasks here". A short task can still be hard.
 - **issue_type**: logistic regression on `all-mpnet-base-v2` embeddings + TF-IDF words + a few text flags, trained on about 350 labeled
@@ -198,6 +199,9 @@ sure_bugs = lite.filter(lambda r: r["issue_type"] == "bug" and r["issue_type_con
 ## Other limits
 
 - `difficulty` and `cluster_name` are heuristics, not ground truth.
+- **Do not split this data randomly into train and evaluation sets.** Tasks from the same project can be close neighbours
+  (8 pairs score above 0.80 similarity) and can share context. Repository names are not stored in the dataset, so a split by
+  repository needs them to be recovered from the task text first. `lite` is balanced by cluster and is not meant as a train/eval split.
 - Languages are unbalanced: @@LANG@@.
 - `lite` is balanced on purpose (25 per cluster), so it is **not a random sample**: it has more Chinese prompts (5.6% vs 3.4%)
   and a lower share of confident labels than the full set.
@@ -210,10 +214,18 @@ sure_bugs = lite.filter(lambda r: r["issue_type"] == "bug" and r["issue_type_con
 |---|---|
 @@CLUSTERS@@
 
+## Changelog
+
+- **v1.1**: `test_files`, `n_test_files`, `patch_lines`, `prog_language` and `difficulty` now ignore three helper files that the
+  original environments add to test patches (`mimo_test_command.sh` in every task, `mimo_build_env.tar.gz.b64` in about 31%,
+  `test_commands.json` in about 22%). Before, every task counted at least one extra test file, 63 tasks were labeled `Shell`
+  only because of the helper script, and about 21% of tasks sat in a different difficulty group. The lite split was rebuilt.
+- **v1.0**: first release.
+
 ## Credit
 
 Task data: XiaomiMiMo/MiMo-V2.6-RL-oss (Apache-2.0). Added columns and tooling: this project, @@REPO@@.
-""".replace("@@N@@", f"{n:,}").replace("@@NL@@", str(nl)).replace("@@NAME@@", HF_NAME) \
+""".replace("@@N@@", f"{n:,}").replace("@@NL@@", str(nl)).replace("@@NAME@@", HF_NAME).replace("@@USER@@", HF_USER) \
    .replace("@@COLS@@", col_table).replace("@@NTEST@@", str(ACC["n_test"])).replace("@@ACC@@", str(ACC["overall"])) \
    .replace("@@S70@@", str(ACC["t70_share"])).replace("@@A70@@", str(ACC["t70_acc"])) \
    .replace("@@S80@@", str(ACC["t80_share"])).replace("@@A80@@", str(ACC["t80_acc"])) \
